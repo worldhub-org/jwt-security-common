@@ -1,0 +1,8 @@
+jwt:
+  security:
+    secret: ${JWT_SECRET:change_me_long_secret_at_least_32_chars}
+    issuer: "auth-svc"
+    ttl: 3600000
+    header: "Authorization"
+    prefix: "Bearer "
+    required-claims: ["sub", "iss", "token_type"]
