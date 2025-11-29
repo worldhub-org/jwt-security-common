@@ -1,19 +1,22 @@
 package library.property;
 
-
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.validation.annotation.Validated;
 
 import java.util.Set;
 
+@Validated
 @ConfigurationProperties(prefix = "jwt.security")
 public class SecurityProperties {
 
+    @NotBlank(message = "jwt.security.secret must be defined.")
     private String secret;
-    private Set<String> requiredClaims;
-    private String issuer = "auth-svc";
-    private long ttl = 3600_000L;
-    private String header = "Authorization";
-    private String prefix = "Bearer ";
+    private String issuer = "unknown";
+    @NotEmpty(message = "jwt.security.trustedIssuers must be defined and contain at least one value.")
+    private Set<String> trustedIssuers;
+    private long ttl;
 
     public String getSecret() {
         return secret;
@@ -39,27 +42,11 @@ public class SecurityProperties {
         this.ttl = ttl;
     }
 
-    public String getHeader() {
-        return header;
+    public Set<String> getTrustedIssuers() {
+        return trustedIssuers;
     }
 
-    public void setHeader(String header) {
-        this.header = header;
-    }
-
-    public String getPrefix() {
-        return prefix;
-    }
-
-    public void setPrefix(String prefix) {
-        this.prefix = prefix;
-    }
-
-    public Set<String> getRequiredClaims() {
-        return requiredClaims;
-    }
-
-    public void setRequiredClaims(Set<String> requiredClaims) {
-        this.requiredClaims = requiredClaims;
+    public void setTrustedIssuers(Set<String> trustedIssuers) {
+        this.trustedIssuers = trustedIssuers;
     }
 }

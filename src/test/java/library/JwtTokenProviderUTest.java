@@ -2,7 +2,6 @@ package library;
 
 import library.property.SecurityProperties;
 import library.exception.InvalidWebTokenException;
-import library.exception.SecurityConfigurationSetupException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.security.core.GrantedAuthority;
@@ -26,15 +25,9 @@ public class JwtTokenProviderUTest {
         props = new SecurityProperties();
         props.setSecret(secret);
         props.setIssuer("test-issuer");
+        props.setTrustedIssuers(Set.of("test-issuer"));
         props.setTtl(ttl);
-        props.setRequiredClaims(Set.of("sub", "iss", "token_type"));
         provider = new JwtTokenProvider(props);
-    }
-
-    @Test
-    void constructor_shouldThrow_ifSecretNull() {
-        props.setSecret(null);
-        assertThrows(SecurityConfigurationSetupException.class, () -> new JwtTokenProvider(props));
     }
 
     @Test
@@ -59,7 +52,7 @@ public class JwtTokenProviderUTest {
 
         String token = provider.generateToken(metadata);
         assertNotNull(token);
-        assertEquals(3, token.split("\\.").length); // JWT format
+        assertEquals(3, token.split("\\.").length);
 
         AuthenticationMetadata parsed = provider.parseToken(token);
         assertEquals(userId, parsed.getUserId());
@@ -100,20 +93,7 @@ public class JwtTokenProviderUTest {
                 List.of(new SimpleGrantedAuthority("USER")));
         String token = provider.generateToken(metadata);
 
-        // Sleep to ensure token expires
         Thread.sleep(5);
-
-        assertThrows(InvalidWebTokenException.class, () -> provider.parseToken(token));
-    }
-
-    @Test
-    void parseToken_shouldThrow_ifMissingRequiredClaims() {
-        props.setRequiredClaims(Set.of("userId", "email", "accountEnabled", "nonExistingClaim"));
-        provider = new JwtTokenProvider(props);
-
-        AuthenticationMetadata metadata = new AuthenticationMetadata(UUID.randomUUID(), "test@test.com", true, false,
-                List.of(new SimpleGrantedAuthority("USER")));
-        String token = provider.generateToken(metadata);
 
         assertThrows(InvalidWebTokenException.class, () -> provider.parseToken(token));
     }

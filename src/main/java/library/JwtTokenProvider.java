@@ -3,7 +3,6 @@ package library;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import library.exception.InvalidWebTokenException;
-import library.exception.SecurityConfigurationSetupException;
 import library.property.SecurityProperties;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -24,17 +23,14 @@ public class JwtTokenProvider {
     protected static final String AUTHORITIES_CLAIM_KEY = "authorities";
     protected static final String TOKEN_TYPE_CLAIM_KEY = "token_type";
     private static final int MIN_HMAC_KEY_BYTES = 32;
+    private static final Set<String> REQUIRED_CLAIMS = Set.of("sub", "iss", "token_type");
 
     private final Key hmacKey;
     private final SecurityProperties props;
 
     public JwtTokenProvider(SecurityProperties props) {
 
-        if (props.getSecret() == null || props.getSecret().isBlank()) {
-            throw new SecurityConfigurationSetupException("jwt.security.secret must be set");
-        }
         this.props = props;
-
         byte[] keyBytes = props.getSecret().getBytes(StandardCharsets.UTF_8);
         if (keyBytes.length < MIN_HMAC_KEY_BYTES) {
             throw new IllegalArgumentException("jwt.security.secret is too short; require at least " + MIN_HMAC_KEY_BYTES + " bytes for HS256");
@@ -75,19 +71,27 @@ public class JwtTokenProvider {
 
             Jws<Claims> claims = Jwts.parserBuilder()
                     .setSigningKey(hmacKey)
-                    .requireIssuer(WORLD_HUB_ISSUER_PREFIX + props.getIssuer())
                     .build()
                     .parseClaimsJws(token);
+
+            String iss = claims.getBody().getIssuer();
+            if (!iss.contains(WORLD_HUB_ISSUER_PREFIX)) {
+                throw new InvalidWebTokenException("Token rejected: Invalid issuer '" + iss + "'.");
+            }
+
+            iss = iss.replace(WORLD_HUB_ISSUER_PREFIX, "");
+            if (!props.getTrustedIssuers().contains(iss)) {
+                throw new InvalidWebTokenException("Token rejected: Untrusted issuer '" + iss + "'.");
+            }
 
             boolean tokenExpired = isTokenExpired(claims.getBody().getExpiration());
             if (tokenExpired) {
                 throw new InvalidWebTokenException("JWT is expired.");
             }
 
-            Set<String> requiredClaims = props.getRequiredClaims() == null ? Collections.emptySet() : props.getRequiredClaims();
-            long numberOfRequiredClaims = requiredClaims.size();
+            long numberOfRequiredClaims = REQUIRED_CLAIMS.size();
             long numberOfRequiredClaimsInToken = claims.getBody().entrySet().stream()
-                    .filter(e -> requiredClaims.contains(e.getKey()))
+                    .filter(e -> REQUIRED_CLAIMS.contains(e.getKey()))
                     .count();
             if (numberOfRequiredClaimsInToken != numberOfRequiredClaims) {
                 throw new InvalidWebTokenException("JWT is has missing required claim.");

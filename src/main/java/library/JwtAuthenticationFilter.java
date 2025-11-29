@@ -15,21 +15,19 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider tokenProvider;
-    private final String header;
-    private final String prefix;
+    private static final String AUTH_HEADER = "Authorization";
+    private static final String AUTH_HEADER_PREFIX = "Bearer ";
 
-    public JwtAuthenticationFilter(JwtTokenProvider tokenProvider, String header, String prefix) {
+    public JwtAuthenticationFilter(JwtTokenProvider tokenProvider) {
         this.tokenProvider = tokenProvider;
-        this.header = header;
-        this.prefix = prefix;
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 
-        String token = request.getHeader(header);
-        if (token != null && token.startsWith(prefix)) {
-            token = token.substring(prefix.length()).trim();
+        String token = request.getHeader(AUTH_HEADER);
+        if (token != null && token.startsWith(AUTH_HEADER_PREFIX)) {
+            token = token.substring(AUTH_HEADER_PREFIX.length()).trim();
             AuthenticationMetadata authenticationMetadata = tokenProvider.parseToken(token);
             Authentication auth = new UsernamePasswordAuthenticationToken(authenticationMetadata, token, authenticationMetadata.getAuthorities());
             SecurityContextHolder.getContext().setAuthentication(auth);
