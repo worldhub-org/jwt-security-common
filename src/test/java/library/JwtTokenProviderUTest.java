@@ -48,7 +48,7 @@ public class JwtTokenProviderUTest {
                 new SimpleGrantedAuthority("USER"),
                 new SimpleGrantedAuthority("ADMIN")
         );
-        AuthenticationMetadata metadata = new AuthenticationMetadata(userId, "test@test.com", true, false, authorities);
+        AuthenticationMetadata metadata = new AuthenticationMetadata(userId, "test@test.com", true, false, authorities, 1, null);
 
         String token = provider.generateToken(metadata);
         assertNotNull(token);
@@ -61,12 +61,13 @@ public class JwtTokenProviderUTest {
         assertFalse(parsed.isServiceToServiceCall());
         assertTrue(parsed.getAuthorities().contains(new SimpleGrantedAuthority("USER")));
         assertTrue(parsed.getAuthorities().contains(new SimpleGrantedAuthority("ADMIN")));
+        assertEquals(1, parsed.getTokenVersion());
     }
 
     @Test
     void generateAndParseToken_shouldWork_forS2SToken() {
         List<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("S2S_CALL"));
-        AuthenticationMetadata metadata = new AuthenticationMetadata(null, null, true, true, authorities);
+        AuthenticationMetadata metadata = new AuthenticationMetadata(null, null, true, true, authorities, 1, UUID.randomUUID());
 
         String token = provider.generateToken(metadata);
         assertNotNull(token);
@@ -77,6 +78,8 @@ public class JwtTokenProviderUTest {
         assertTrue(parsed.isAccountEnabled());
         assertTrue(parsed.isServiceToServiceCall());
         assertTrue(parsed.getAuthorities().contains(new SimpleGrantedAuthority("S2S_CALL")));
+        assertEquals(1, parsed.getTokenVersion());
+        assertEquals(metadata.getSessionId(), parsed.getSessionId());
     }
 
     @Test
@@ -90,7 +93,7 @@ public class JwtTokenProviderUTest {
         provider = new JwtTokenProvider(props);
 
         AuthenticationMetadata metadata = new AuthenticationMetadata(UUID.randomUUID(), "test@test.com", true, false,
-                List.of(new SimpleGrantedAuthority("USER")));
+                List.of(new SimpleGrantedAuthority("USER")), 1, null);
         String token = provider.generateToken(metadata);
 
         Thread.sleep(5);
@@ -100,7 +103,7 @@ public class JwtTokenProviderUTest {
 
     @Test
     void parseToken_shouldReturnEmptyAuthorities_ifNone() {
-        AuthenticationMetadata metadata = new AuthenticationMetadata(UUID.randomUUID(), "test@test.com", true, false, List.of());
+        AuthenticationMetadata metadata = new AuthenticationMetadata(UUID.randomUUID(), "test@test.com", true, false, List.of(), 1, null);
         String token = provider.generateToken(metadata);
 
         AuthenticationMetadata parsed = provider.parseToken(token);

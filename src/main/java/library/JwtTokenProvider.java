@@ -21,9 +21,12 @@ public class JwtTokenProvider {
     protected static final String EMAIL_CLAIM_KEY = "email";
     protected static final String ACCOUNT_ENABLED_CLAIM_KEY = "accountEnabled";
     protected static final String AUTHORITIES_CLAIM_KEY = "authorities";
-    protected static final String TOKEN_TYPE_CLAIM_KEY = "token_type";
+    protected static final String TOKEN_TYPE_CLAIM_KEY = "tokenType";
+    protected static final String TOKEN_VERSION_CLAIM_KEY = "tokenVersion";
+    protected static final String SESSION_ID_CLAIM_KEY = "sessionId";
+
     private static final int MIN_HMAC_KEY_BYTES = 32;
-    private static final Set<String> REQUIRED_CLAIMS = Set.of("sub", "iss", "token_type");
+    private static final Set<String> REQUIRED_CLAIMS = Set.of("sub", "iss", TOKEN_TYPE_CLAIM_KEY);
 
     private final Key hmacKey;
     private final SecurityProperties props;
@@ -109,8 +112,11 @@ public class JwtTokenProvider {
                     .map(Object::toString)
                     .map(SimpleGrantedAuthority::new)
                     .collect(Collectors.toUnmodifiableList());
+            Integer tokenVersion = claims.getBody().get(TOKEN_VERSION_CLAIM_KEY, Integer.class);
+            String rawSessionId = claims.getBody().get(SESSION_ID_CLAIM_KEY, String.class);
+            UUID sessionId = rawSessionId == null ? null : UUID.fromString(rawSessionId);
 
-            return new AuthenticationMetadata(userId, email, accountEnabled, tokenType == TokenType.S2S, authorities);
+            return new AuthenticationMetadata(userId, email, accountEnabled, tokenType == TokenType.S2S, authorities, tokenVersion, sessionId);
         } catch (Exception e) {
             throw new InvalidWebTokenException("JWT is not valid and can't be parsed. JWT=[%s]".formatted(token), e);
         }
@@ -133,6 +139,8 @@ public class JwtTokenProvider {
         }
 
         claims.put(ACCOUNT_ENABLED_CLAIM_KEY, metadata.isAccountEnabled());
+        claims.put(TOKEN_VERSION_CLAIM_KEY, metadata.getTokenVersion());
+        claims.put(SESSION_ID_CLAIM_KEY, metadata.getSessionId());
 
         Collection<? extends GrantedAuthority> authorities = metadata.getAuthorities();
         claims.put(AUTHORITIES_CLAIM_KEY, authorities.stream().map(GrantedAuthority::getAuthority).toList());
